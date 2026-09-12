@@ -14,8 +14,6 @@ const runNameContext = androidbuild.runNameContext;
 const printErrorsAndExit = androidbuild.printErrorsAndExit;
 const BuildTools = @import("BuildTools.zig");
 const BuiltinOptionsUpdate = @import("BuiltinOptionsUpdate.zig");
-const D8Glob = @import("D8Glob.zig");
-const DirectoryFileInput = @import("DirectoryFileInput.zig");
 const Ndk = @import("Ndk.zig");
 const Sdk = @import("tools.zig");
 const KeyStore = Sdk.KeyStore;
@@ -367,7 +365,6 @@ fn doInstallApk(apk: *Apk) Allocator.Error!*Step.InstallFile {
                 .directory => |asset_dir_path| {
                     aapt2link.addArg("-A");
                     aapt2link.addDirectoryArg(asset_dir_path.source);
-                    DirectoryFileInput.create(b, aapt2link, asset_dir_path.source);
                 },
             }
         }
@@ -389,7 +386,6 @@ fn doInstallApk(apk: *Apk) Allocator.Error!*Step.InstallFile {
                         // add directory
                         aapt2compile.addArg("--dir");
                         aapt2compile.addDirectoryArg(resource_directory.source);
-                        DirectoryFileInput.create(b, aapt2compile, resource_directory.source);
 
                         aapt2compile.addArg("-o");
                         const resources_flat_zip_file = aapt2compile.addOutputFileArg("resource_dir.flat.zip");
@@ -666,13 +662,19 @@ fn doInstallApk(apk: *Apk) Allocator.Error!*Step.InstallFile {
         // d8.addArg("--min-api");
         // d8.addArg(number_as_string);
 
-        // add each output *.class file
-        if (builtin.zig_version.major == 0 and builtin.zig_version.minor <= 16) {
-            D8Glob.create(b, d8, java_classes_output_dir, root_jar);
-        } else {
-            // TODO(jae): 2026-06-29: Update D8Glob to collect files as seperate Run artifact
-            @compileError("TODO: Rewrite D8Glob to use Step.Run");
-        }
+        const java_classes_jar: LazyPath = classesblk: {
+            const class_jar = b.addSystemCommand(&[_][]const u8{
+                apk.sdk.java_tools.jar,
+            });
+            class_jar.setName(runNameContext("jar (zip java classes)"));
+            class_jar.setCwd(java_classes_output_dir);
+            class_jar.step.dependOn(&javac_cmd.step);
+            class_jar.addArg("-cfM");
+            const out = class_jar.addOutputFileArg("android_classes.jar");
+            class_jar.addArg(".");
+            break :classesblk out;
+        };
+        d8.addFileArg(java_classes_jar);
 
         // ie. android_sdk/platforms/android-{api-level}/android.jar
         d8.addArg("--lib");
