@@ -451,8 +451,7 @@ fn doInstallApk(apk: *Apk) Allocator.Error!*Step.InstallFile {
             .cwd_relative => |sub_path| sub_path,
             .generated => @panic("invalid precompiled library, cannot be generated"),
             .dependency => |dep| dep.sub_path,
-            // TODO(jae): 2026-06-29: Handle .relative in Zig 0.17.X
-            // .relative => @panic("UNHANDLED: invalid relative path"),
+            .relative => |rel| rel.sub_path,
         });
         _ = apk_files.addCopyFile(precompiled_library.path, b.fmt("lib/{s}/{s}", .{ so_dir, precompiled_lib_basename }));
     }
