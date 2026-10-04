@@ -348,6 +348,10 @@ pub fn createOrGetLibCFile(sdk: *Sdk, compile: *Step.Compile, android_api_level:
         \\kernel32_lib_dir=
         \\
         \\gcc_dir={[crt_dir]s}
+        \\
+        \\# The directory that contains the Darwin SDK.
+        \\# Only needed when targeting Darwin.
+        \\darwin_sdk_dir=
     ;
 
     const include_dir = b.fmt("{s}/usr/include", .{ndk_sysroot_path});
